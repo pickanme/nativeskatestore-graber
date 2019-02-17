@@ -1,6 +1,19 @@
-from lxml import etree
+import pyodbc
+from io import StringIO
 from urllib.request import urlopen
-from io import StringIO, BytesIO
+
+from lxml import etree
+
+# Specifying the ODBC driver, server name, database, etc. directly
+cnxn = pyodbc.connect('DRIVER={/usr/local/lib/libsqlite3odbc.so};'
+                      'Database=../resources/nativeskatestore.sqlite;'
+                      'LongNames=0;Timeout=1000;NoTXN=0;'
+                      'SyncPragma=NORMAL;StepAPI=0;')
+# Python 3.x
+cnxn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-8')
+cnxn.setencoding(encoding='utf-8')
+# Create a cursor from the connection
+cursor = cnxn.cursor()
 
 host = "https://www.nativeskatestore.co.uk"
 
@@ -10,78 +23,42 @@ def main():
     sh_link = host+"/skate-shoes-c1"
     cl_link = host+"/skate-clothing-c9"
     ac_link = host+"/accessories-c3"
+    # specify db names
+    sk_db = "skateboards"
+    sh_db = "shoes"
+    cl_db = "clothing"
+    ac_db = "accessories"
 
     print("-----------------------------------------------------------")
     print("Skateboards")
-    print_products(sk_link)
+    print("Page number 1")
+    print_products(sk_link, sk_db)
     for i in range(2,47,1):
         print("Page number ", i)
-        print_products(sk_link + "?page=" + str(i))
+        print_products(sk_link + "?page=" + str(i), sk_db)
     print("-----------------------------------------------------------")
     print("Shoes")
-    print_products(sh_link)
+    print("Page number 1")
+    print_products(sh_link, sh_db)
     for i in range(2, 13, 1):
         print("Page number ", i)
-        print_products(sh_link + "?page=" + str(i))
+        print_products(sh_link + "?page=" + str(i), sh_db)
     print("-----------------------------------------------------------")
     print("Clothing")
-    print_products(cl_link)
-    for i in range(61, 83, 1):
+    print("Page number 1")
+    print_products(cl_link, cl_db)
+    for i in range(2, 83, 1):
         print("Page number ", i)
-        print_products(cl_link + "?page=" + str(i))
-
+        print_products(cl_link + "?page=" + str(i), cl_db)
     print("-----------------------------------------------------------")
     print("Accessories")
-    print_products(ac_link)
+    print("Page number 1")
+    print_products(ac_link, ac_db)
     for i in range(2, 14, 1):
         print("Page number ", i)
-        print_products(ac_link + "?page=" + str(i))
+        print_products(ac_link + "?page=" + str(i), ac_db)
 
-    # data = urlopen(quote_page).read()  # bytes
-    # body = data.decode('utf-8')
-    #
-    # parser = etree.HTMLParser()
-    # tree = etree.parse(StringIO(body), parser)
-    #
-    # links = tree.xpath('//div[contains(@class,"product__details__title")]'
-    #                       '/a')
-    # prices = tree.findall('//span[@class="product-content__price--inc"]'
-    #                       '/span[@class="GBP"]')
-    # images = tree.xpath('//div[@class="product__image"]'
-    #                     '/a'
-    #                     '/img'
-    #                     )
-    #
-    #
-    # print(len(prices))
-    # print(len(links))
-    # print(len(images))
-    #
-    # for i in range((int)(len(links)/4)):
-    #     # for j in range(4):
-    #     print("titles: ",
-    #           links[i].attrib.get('title'),   '|',
-    #           links[i+1].attrib.get('title'), '|',
-    #           links[i+2].attrib.get('title'), '|',
-    #           links[i+3].attrib.get('title'))
-    #     print("prices: ",
-    #           prices[i].text, '|',
-    #           prices[i + 1].text, '|',
-    #           prices[i + 2].text, '|',
-    #           prices[i + 3].text)
-    #     print("links: ",
-    #           host+links[i].attrib.get('href'), '|',
-    #           host+links[i + 1].attrib.get('href'), '|',
-    #           host+links[i + 2].attrib.get('href'), '|',
-    #           host+links[i + 3].attrib.get('href'))
-    #     print("images: ",
-    #           host+images[i].attrib.get('data-src'), '|',
-    #           host+images[i + 1].attrib.get('data-src'), '|',
-    #           host+images[i + 2].attrib.get('data-src'), '|',
-    #           host+images[i + 3].attrib.get('data-src'))
-
-
-def print_products(link):
+def print_products(link, db_name):
     data = urlopen(link).read()  # bytes
     body = data.decode('utf-8')
 
@@ -99,33 +76,14 @@ def print_products(link):
                         '/a'
                         '/img')
 
-
-    print(len(prices))
-    print(len(links))
-    print(len(images))
-
-    # for i in range((int)(len(links) / 4)):
-    #     # for j in range(4):
-    #     print("titles: ",
-    #           links[i].attrib.get('title'), '|',
-    #           links[i + 1].attrib.get('title'), '|',
-    #           links[i + 2].attrib.get('title'), '|',
-    #           links[i + 3].attrib.get('title'))
-    #     print("prices: ",
-    #           prices[i].text, '|',
-    #           prices[i + 1].text, '|',
-    #           prices[i + 2].text, '|',
-    #           prices[i + 3].text)
-    #     print("links: ",
-    #           host + links[i].attrib.get('href'), '|',
-    #           host + links[i + 1].attrib.get('href'), '|',
-    #           host + links[i + 2].attrib.get('href'), '|',
-    #           host + links[i + 3].attrib.get('href'))
-    #     print("images: ",
-    #           host + images[i].attrib.get('data-src'), '|',
-    #           host + images[i + 1].attrib.get('data-src'), '|',
-    #           host + images[i + 2].attrib.get('data-src'), '|',
-    #           host + images[i + 3].attrib.get('data-src'))
+    for i in range(len(links)):
+        cursor.execute("insert  into "+db_name+"(title, price, prod_link, img_link)"
+                       "values (?, ?, ?, ?)",
+                       links[i].attrib.get('title'),
+                       prices[i].text,
+                       host + links[i].attrib.get('href'),
+                       host + images[i].attrib.get('data-src'))
+        cursor.commit()
 
 if __name__ == '__main__':
     main()
