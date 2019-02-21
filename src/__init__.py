@@ -29,33 +29,20 @@ def main():
     cl_db = "clothing"
     ac_db = "accessories"
 
-    print("-----------------------------------------------------------")
-    print("Skateboards")
-    print("Page number 1")
     print_products(sk_link, sk_db)
     for i in range(2,47,1):
-        print("Page number ", i)
         print_products(sk_link + "?page=" + str(i), sk_db)
-    print("-----------------------------------------------------------")
-    print("Shoes")
-    print("Page number 1")
+
     print_products(sh_link, sh_db)
     for i in range(2, 13, 1):
-        print("Page number ", i)
         print_products(sh_link + "?page=" + str(i), sh_db)
-    print("-----------------------------------------------------------")
-    print("Clothing")
-    print("Page number 1")
+
     print_products(cl_link, cl_db)
     for i in range(2, 83, 1):
-        print("Page number ", i)
         print_products(cl_link + "?page=" + str(i), cl_db)
-    print("-----------------------------------------------------------")
-    print("Accessories")
-    print("Page number 1")
+
     print_products(ac_link, ac_db)
     for i in range(2, 14, 1):
-        print("Page number ", i)
         print_products(ac_link + "?page=" + str(i), ac_db)
 
 def print_products(link, db_name):
