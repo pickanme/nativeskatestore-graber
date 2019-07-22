@@ -16,6 +16,7 @@ if os.path.isfile(q_file):
     wb_q = load_workbook(filename=q_file)
     ID_COL = 1
     TYPE_COL = 2
+    PARENT_ID_COL = 3
     TITLE_COL = 5
     CONTENT_COL = 6
     FORMAT_COL = 7
@@ -49,6 +50,17 @@ q_category_x = "./form/span[contains(@class, 'qa-q-view-avatar-meta')]/span" \
             "/span[contains(@class, 'qa-q-view-where')]" \
             "/span[contains(@class, 'qa-q-view-where-data')]/a"
 
+answers_x = "//div[contains(@class, 'qa-part-a-list')]/div[contains(@class, 'qa-a-list')]/div[contains(@class, 'qa-a-list-item')]/div[contains(@class, 'qa-a-item-main')]"
+ans_next_page_x = "//li[contains(@class, 'qa-page-links-item')]/a[contains(@class, 'qa-page-next')]"
+
+ans_content_x = "./form/div[contains(@class, 'qa-a-item-content')]/div[contains(@itemprop, 'text')]"
+ans_date_x = "./form//span[contains(@class, 'qa-a-item-avatar-meta')]/span" \
+            "/span[contains(@class, 'qa-a-item-when')]" \
+            "/span[contains(@class, 'qa-a-item-when-data')]/time"
+ans_username_x = "./form//span[contains(@class, 'qa-a-item-avatar-meta')]/span" \
+            "/span[contains(@class, 'qa-a-item-who')]" \
+            "/span[contains(@class, 'qa-a-item-who-data')]/span/a/span[contains(@itemprop, 'name')]"
+
 date_p = "%Y-%m-%dT%H:%M:%S%z" 
 date_f = "%d.%m.%Y %H:%M:%S"
 
@@ -56,10 +68,10 @@ host = "https://i-otvet.ru"
 next_page = host+"/questions"
 
 def main():
-    process_list_page(next_page)
-    # for i in range(20,10952380,20):
+    # process_list_page(next_page)
+    for i in range(10952340,10952380,20):
         # next_page = next_page + "?start=" + str(i)
-        # process_list_page(next_page)
+        process_list_page(next_page + "?start=" + str(i))
 
 
 def process_list_page(l_link):
@@ -74,6 +86,8 @@ def process_list_page(l_link):
     print(l_link, 'is scanned')
 
 def process_q_page(q_link):
+    global q_id
+    
     print(q_link)
     tree = get_tree(q_link)
 
@@ -103,11 +117,17 @@ def process_q_page(q_link):
         category_id = get_id(cat_el[0].text)
 
     add_que(title, tags, username, datetime, content, category_id)
+    # anss = tree.xpath(answers_x)
+    # len(anss)
+    process_answers(q_id, tree)
+    # process_answers(tree)
+    
+
+    q_id = q_id + 1
 
 def add_que(title, tags, username, datetime_from, content, cat_id):
     global last_free_row
-    global q_id
-
+    
     wb_q_s = wb_q.active
 
     wb_q_s.cell(column=ID_COL, row=last_free_row).value = q_id
@@ -123,7 +143,50 @@ def add_que(title, tags, username, datetime_from, content, cat_id):
     wb_q.save(filename=q_file)
 
     last_free_row = last_free_row + 1
-    q_id = q_id + 1
+    
+def process_answers(p_id, tree):
+    answers = tree.xpath(answers_x)
+    print(len(answers))
+    # print("Processing answers")
+    for ans in answers:
+        # grab ans content
+        content_el = ans.xpath(ans_content_x)
+        content = '' 
+        if(len(content_el) != 0):
+            content = stringify_children(content_el[0])
+        # grab ans datetime 
+        datetime = get_date(ans.xpath(ans_date_x)[0].attrib.get('datetime'))
+        # grab ans username
+        user_el = ans.xpath(ans_username_x)
+        username = 'аноним'
+        if(len(user_el) != 0):
+            username = user_el[0].text
+        # add to excel doc
+        add_ans(p_id, username, datetime, content)
+    
+    np_link = tree.xpath(ans_next_page_x)
+    if(len(np_link) != 0):
+        an_page = host+np_link.attrib.get('href')[1:]
+        process_answers(p_id, an_page)
+
+def add_ans(p_id, username, datetime_from, content):
+    global last_free_row
+    
+    wb_q_s = wb_q.active
+
+    wb_q_s.cell(column=PARENT_ID_COL, row=last_free_row).value = p_id
+    wb_q_s.cell(column=TYPE_COL, row=last_free_row).value = "A"
+    # wb_q_s.cell(column=TITLE_COL, row=last_free_row).value = title
+    wb_q_s.cell(column=CONTENT_COL, row=last_free_row).value = content
+    wb_q_s.cell(column=FORMAT_COL, row=last_free_row).value = "html"
+    # wb_q_s.cell(column=CATEGORY_COL, row=last_free_row).value = cat_id
+    # wb_q_s.cell(column=TAGS_COL, row=last_free_row).value = tags
+    wb_q_s.cell(column=USERNAME_COL, row=last_free_row).value = username
+    wb_q_s.cell(column=DATETIME_COL, row=last_free_row).value = datetime_from
+    
+    wb_q.save(filename=q_file)
+
+    last_free_row = last_free_row + 1
 
 def get_tree(link):
     req = Request(link, headers={'User-Agent': 'Mozilla/5.0'})
@@ -174,6 +237,7 @@ def create_cat(i,c_name):
 
     return id_val
 
+# https://stackoverflow.com/questions/4624062/get-all-text-inside-a-tag-in-lxml
 def stringify_children(node):
     from lxml.etree import tostring
     from itertools import chain
