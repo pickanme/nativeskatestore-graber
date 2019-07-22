@@ -9,8 +9,8 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from datetime import datetime
 
-q_file = "resources/sample-file.xlsx"
-cat_file = "resources/categories.xlsx"
+q_file = r"resources/sample-file.xlsx"
+cat_file = r"resources/categories.xlsx"
 
 if os.path.isfile(q_file):
     wb_q = load_workbook(filename=q_file)
@@ -68,9 +68,8 @@ host = "https://i-otvet.ru"
 next_page = host+"/questions"
 
 def main():
-    # process_list_page(next_page)
-    for i in range(10952340,10952380,20):
-        # next_page = next_page + "?start=" + str(i)
+    process_list_page(next_page)
+    for i in range(1360,10952381,20):
         process_list_page(next_page + "?start=" + str(i))
 
 
@@ -87,8 +86,7 @@ def process_list_page(l_link):
 
 def process_q_page(q_link):
     global q_id
-    
-    print(q_link)
+    # print(q_link)
     tree = get_tree(q_link)
 
     # grab answer title
@@ -128,7 +126,13 @@ def process_q_page(q_link):
 def add_que(title, tags, username, datetime_from, content, cat_id):
     global last_free_row
     
-    wb_q_s = wb_q.active
+    if (last_free_row < 1048576):
+        wb_q_s = wb_q.active
+    elif (last_free_row > 1048578):
+        quit()
+    else:
+        print("Amount of items is out of sheet row range.")
+        wb_q_s = wb_q.create_sheet(title=last_free_row)
 
     wb_q_s.cell(column=ID_COL, row=last_free_row).value = q_id
     wb_q_s.cell(column=TYPE_COL, row=last_free_row).value = "Q"
@@ -146,7 +150,7 @@ def add_que(title, tags, username, datetime_from, content, cat_id):
     
 def process_answers(p_id, tree):
     answers = tree.xpath(answers_x)
-    print(len(answers))
+    # print(len(answers))
     # print("Processing answers")
     for ans in answers:
         # grab ans content

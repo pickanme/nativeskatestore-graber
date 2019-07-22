@@ -1,76 +1,57 @@
-import pyodbc
+# import pyodbc
 from io import StringIO
-from urllib.request import urlopen
-
+from urllib.request import Request, urlopen
 from lxml import etree
+from openpyxl import Workbook
 
 # Specifying the ODBC driver, server name, database, etc. directly
-cnxn = pyodbc.connect('DRIVER={/usr/local/lib/libsqlite3odbc.so};'
-                      'Database=../resources/nativeskatestore.sqlite;'
-                      'LongNames=0;Timeout=1000;NoTXN=0;'
-                      'SyncPragma=NORMAL;StepAPI=0;')
-# Python 3.x
-cnxn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-8')
-cnxn.setencoding(encoding='utf-8')
-# Create a cursor from the connection
-cursor = cnxn.cursor()
+# cnxn = pyodbc.connect('DRIVER={/usr/local/lib/libsqlite3odbc.so};'
+#                       'Database=../resources/nativeskatestore.sqlite;'
+#                       'LongNames=0;Timeout=1000;NoTXN=0;'
+#                       'SyncPragma=NORMAL;StepAPI=0;')
+# # Python 3.x
+# cnxn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-8')
+# cnxn.setencoding(encoding='utf-8')
+# # Create a cursor from the connection
+# cursor = cnxn.cursor()
 
-host = "https://www.nativeskatestore.co.uk"
+# qs_x = "//div[contains(@class, 'qa-q-list')]/div[contains(@class, 'qa-q-list-item')]"
+next_page = 'https://i-otvet.ru/questions'
+cat_x = "//span[contains(@class, 'qa-q-item-where-data')]/a[contains(@class, 'qa-category-link')]"
+categories = set()
 
 def main():
-    # specify the url
-    sk_link = host+"/skateboards-c7"
-    sh_link = host+"/skate-shoes-c1"
-    cl_link = host+"/skate-clothing-c9"
-    ac_link = host+"/accessories-c3"
-    # specify db names
-    sk_db = "skateboards"
-    sh_db = "shoes"
-    cl_db = "clothing"
-    ac_db = "accessories"
+    print_products(next_page)
+    for i in range(20,10952380,20):
+        print_products(next_page + "?start=" + str(i))
 
-    print_products(sk_link, sk_db)
-    for i in range(2,47,1):
-        print_products(sk_link + "?page=" + str(i), sk_db)
+    i = 1
+    wb = Workbook()
+    ws = wb.active
 
-    print_products(sh_link, sh_db)
-    for i in range(2, 13, 1):
-        print_products(sh_link + "?page=" + str(i), sh_db)
+    for cat in categories:
+        print("Add ", i, " category")
+        ws.cell(row=i, column=1, value=i)
+        ws.cell(row=i, column=2, value=cat)
+        i = i + 1
 
-    print_products(cl_link, cl_db)
-    for i in range(2, 83, 1):
-        print_products(cl_link + "?page=" + str(i), cl_db)
+    wb.save(filename = "cats.xls")
 
-    print_products(ac_link, ac_db)
-    for i in range(2, 14, 1):
-        print_products(ac_link + "?page=" + str(i), ac_db)
 
-def print_products(link, db_name):
-    data = urlopen(link).read()  # bytes
+def print_products(link):
+    req = Request(link, headers={'User-Agent': 'Mozilla/5.0'})
+    data = urlopen(req).read()  # bytes
     body = data.decode('utf-8')
 
     parser = etree.HTMLParser()
     tree = etree.parse(StringIO(body), parser)
 
-    links = tree.xpath('//div[contains(@class,"product__details__title")]'
-                       '/a')
-    prices = tree.xpath('//div[@class="product__details__prices"]'
-                        '/span[contains(@class, "product__details__prices__price")]'
-                        '/span'
-                        '/span[@class="product-content__price--inc"]'
-                        '/span[@class="GBP"]')
-    images = tree.xpath('//div[@class="product__image"]'
-                        '/a'
-                        '/img')
+    cat_names = tree.xpath(cat_x)
 
-    for i in range(len(links)):
-        cursor.execute("insert  into "+db_name+"(title, price, prod_link, img_link)"
-                       "values (?, ?, ?, ?)",
-                       links[i].attrib.get('title'),
-                       prices[i].text,
-                       host + links[i].attrib.get('href'),
-                       host + images[i].attrib.get('data-src'))
-        cursor.commit()
+    for cat in cat_names:
+        categories.add(cat.text)
+
+    print(link, " is scanned.")
 
 if __name__ == '__main__':
     main()
