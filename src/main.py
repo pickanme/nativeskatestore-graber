@@ -23,10 +23,10 @@ else:
 q_id = 1
 last_free_row = 2
 
-qs_x = "//div[contains(@class, 'qa-q-list')]/div[contains(@class, 'qa-q-list-item')]"
+qs_x = "//div[contains(@class, 'qa-q-list')]/div[contains(@class, 'qa-q-list-item')]/div[contains(@class, 'qa-q-item-main')]/div[contains(@class, 'qa-q-item-title')]/a"
 q_block_x = "//div[contains(@class, 'qa-part-q-view')]//div[contains(@class, 'qa-q-view-main')]"
 q_title_x = "//div[contains(@class, 'qa-main-heading')]/h1/a/span"
-q_content_x = "./form/div[contains(@class, 'qa-q-view-content')]/div[contains(@itemprop, 'text')]/p"
+q_content_x = "./form/div[contains(@class, 'qa-q-view-content')]/div[contains(@itemprop, 'text')]"
 q_tags_x = "./form/div[contains(@class, 'qa-q-view-tags')]" \
             "/ul[contains(@class, 'qa-q-view-tag-list')]" \
             "/li[contains(@class, 'qa-q-view-tag-item')]/a"
@@ -43,26 +43,30 @@ q_category_x = "./form/span[contains(@class, 'qa-q-view-avatar-meta')]/span" \
 date_p = "%Y-%m-%dT%H:%M:%S%z" 
 date_f = "%d.%m.%Y %H:%M:%S"
 
+host = "https://i-otvet.ru"
+next_page = host+"/questions"
+
 def main():
-    # process_list_page(next_page)
+    process_list_page(next_page)
     # for i in range(20,10952380,20):
-    #     process_list_page(next_page + "?start=" + str(i))
-
-    process_q_page("https://i-otvet.ru/4599632/%D1%81%D0%BF%D0%B8%D1%88%D0%B8-%D1%82%D0%BE%D0%BB%D1%8C%D0%BA%D0%BE-%D1%81%D0%BB%D0%BE%D0%B2%D0%B0-%D0%BD%D0%B0%D0%B7%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F-%D0%B4%D0%BE%D0%BC%D0%B0%D1%88%D0%BD%D0%B8%D1%85-%D0%B6%D0%B8%D0%B2%D0%BE%D1%82%D0%BD%D1%8B%D1%85-%D0%BA%D0%BE%D1%80%D0%BE%D0%B2%D0%B0-%D1%81%D0%BE%D0%B1%D0%B0%D0%BA%D0%B0")
-
-    # wb.save(filename = "db.xls")
+        # next_page = next_page + "?start=" + str(i)
+        # process_list_page(next_page)
 
 
-def process_list_page(link):
-    tree = get_tree(link)
+def process_list_page(l_link):
+    tree = get_tree(l_link)
     # get question elements
     questions = tree.xpath(qs_x)
     # get links from elements
     for q in questions:
-        process_q_page(q.attrib.get('href'))
+        que_link = host+q.attrib.get('href')[1:]
+        process_q_page(que_link)
+    
+    print(l_link, 'is scanned')
 
-def process_q_page(link):
-    tree = get_tree(link)
+def process_q_page(q_link):
+    print(q_link)
+    tree = get_tree(q_link)
 
     # grab answer title
     title = tree.xpath(q_title_x)[0].text
@@ -70,19 +74,31 @@ def process_q_page(link):
     # grab question block
     q_block = tree.xpath(q_block_x)[0]
     # grab q_block content
-    content = q_block.xpath(q_content_x)[0].text
+    content_el = q_block.xpath(q_content_x)
+    content = '' 
+    if(len(content_el) != 0):
+        content = stringify_children(content_el[0])
     # grab q_block datetime 
     datetime = get_date(q_block.xpath(q_date_x)[0].attrib.get('datetime'))
     # grab q_block tags
     tags = get_tags(q_block.xpath(q_tags_x))
     # grab q_block username
-    username = q_block.xpath(q_username_x)[0].text
+    user_el = q_block.xpath(q_username_x)
+    username = 'аноним'
+    if(len(user_el) != 0):
+        username = user_el[0].text
     # grab q_block category
-    category_id = get_id(q_block.xpath(q_category_x)[0].text)
+    cat_el = q_block.xpath(q_category_x)
+    category_id = ''
+    if (len(cat_el) != 0):
+        category_id = get_id(cat_el[0].text)
 
-    add_que(title, content, category_id, tags, username, datetime)
+    add_que(title, tags, username, datetime, content, category_id)
 
-def add_que(title, content, cat_id, tags, username, datetime_from):
+def add_que(title, tags, username, datetime_from, content, cat_id):
+    global last_free_row
+    global q_id
+
     wb_q_s = wb_q.active
 
     wb_q_s.cell(column=1, row=last_free_row).value = q_id
@@ -96,15 +112,8 @@ def add_que(title, content, cat_id, tags, username, datetime_from):
     
     wb_q.save(filename=q_file)
 
-# def add_q_post(link):
-# 	tree = get_tree(link)
-
-#     cat_names = tree.xpath(cat_x)
-
-#     for cat in cat_names:
-#         categories.add(cat.text)
-
-#     print(link, " is scanned.")
+    last_free_row = last_free_row + 1
+    q_id = q_id + 1
 
 def get_tree(link):
     req = Request(link, headers={'User-Agent': 'Mozilla/5.0'})
@@ -155,6 +164,15 @@ def create_cat(i,c_name):
     wb_cat.save(filename=cat_file)
 
     return id_val
+
+def stringify_children(node):
+    from lxml.etree import tostring
+    from itertools import chain
+    parts = ([node.text] +
+            list(chain(*([c.text, tostring(c, encoding=str), c.tail] for c in node.getchildren()))) +
+            [node.tail])
+    # filter removes possible Nones in texts and tails
+    return ''.join(filter(None, parts))
 
 if __name__ == '__main__':
 	main()
