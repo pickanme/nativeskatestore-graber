@@ -14,6 +14,15 @@ cat_file = "resources/categories.xlsx"
 
 if os.path.isfile(q_file):
     wb_q = load_workbook(filename=q_file)
+    ID_COL = 1
+    TYPE_COL = 2
+    TITLE_COL = 5
+    CONTENT_COL = 6
+    FORMAT_COL = 7
+    CATEGORY_COL = 8
+    TAGS_COL = 10
+    USERNAME_COL = 12
+    DATETIME_COL = 15
 else:
     wb_q = Workbook()
 if os.path.isfile(cat_file):
@@ -101,14 +110,15 @@ def add_que(title, tags, username, datetime_from, content, cat_id):
 
     wb_q_s = wb_q.active
 
-    wb_q_s.cell(column=1, row=last_free_row).value = q_id
-    wb_q_s.cell(column=2, row=last_free_row).value = "Q"
-    wb_q_s.cell(column=5, row=last_free_row).value = title
-    wb_q_s.cell(column=6, row=last_free_row).value = content
-    wb_q_s.cell(column=7, row=last_free_row).value = "html"
-    wb_q_s.cell(column=10, row=last_free_row).value = tags
-    wb_q_s.cell(column=12, row=last_free_row).value = username
-    wb_q_s.cell(column=15, row=last_free_row).value = datetime_from
+    wb_q_s.cell(column=ID_COL, row=last_free_row).value = q_id
+    wb_q_s.cell(column=TYPE_COL, row=last_free_row).value = "Q"
+    wb_q_s.cell(column=TITLE_COL, row=last_free_row).value = title
+    wb_q_s.cell(column=CONTENT_COL, row=last_free_row).value = content
+    wb_q_s.cell(column=FORMAT_COL, row=last_free_row).value = "html"
+    wb_q_s.cell(column=CATEGORY_COL, row=last_free_row).value = cat_id
+    wb_q_s.cell(column=TAGS_COL, row=last_free_row).value = tags
+    wb_q_s.cell(column=USERNAME_COL, row=last_free_row).value = username
+    wb_q_s.cell(column=DATETIME_COL, row=last_free_row).value = datetime_from
     
     wb_q.save(filename=q_file)
 
@@ -146,11 +156,10 @@ def get_id(c_name):
 
     while(cell.value):
         if(cell.value == c_name):
-           # print(cell.value, c_name)
-           return sheet.cell(column=cell.column-1, row=cell.row)     
+           return sheet.cell(column=cell.column-1, row=cell.row).value    
         i = i + 1
         cell = sheet.cell(column=2, row=i)
-    
+
     return create_cat(i, c_name)
 
 def create_cat(i,c_name):
